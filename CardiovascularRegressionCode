@@ -1,0 +1,67 @@
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.linear_model import LinearRegression
+import pandas as pd
+
+
+dataframe = pd.read_csv('/Users/kendalllucas/Documents/Regression Project/data/U.S._Chronic_Disease_Indicators (1).csv')
+
+alcohol_df = dataframe[dataframe["Topic"].str.contains("Alcohol", case = False, na = False)]
+alcohol_df = alcohol_df[alcohol_df["Question"].str.contains("Binge drinking", case = False, na = False)]
+alcohol_df = alcohol_df[alcohol_df["DataValueType"].str.contains("Crude Prevalence", case = False, na = False)]
+
+cardio_df = dataframe[dataframe["Topic"].str.contains("cardio", case= False, na= False)]
+cardio_df= cardio_df[cardio_df["DataValueType"].str.contains("Crude Prevalence", case=False, na= False)]
+
+
+#cardio_df = cardio_df[cardio_df["YearStart"]==2020]
+#alcohol_df = alcohol_df[alcohol_df["YearStart"]==2020]
+
+merged = pd.merge(
+    cardio_df,
+    alcohol_df,
+    on = ["LocationDesc", "YearStart"],
+    how= "inner", 
+    suffixes=("_binge", "_cardio")
+)
+
+#print(merged.head())
+
+merged = merged[["LocationDesc", "DataValue_binge", "DataValue_cardio"]]
+merged = merged.dropna()
+
+merged["DataValue_binge"] = pd.to_numeric(merged["DataValue_binge"], errors="coerce")
+merged["DataValue_cardio"] = pd.to_numeric(merged["DataValue_cardio"], errors="coerce")
+merged = merged.groupby("LocationDesc").mean().reset_index() 
+
+print("Alcohol rows:", len(alcohol_df))
+print("Cardio rows:", len(cardio_df))
+print("Merged rows:", len(merged))
+print(merged.head())
+
+plt.scatter(merged["DataValue_binge"], merged["DataValue_cardio"],  alpha = 0.5)
+m, b = np.polyfit(merged["DataValue_binge"], merged["DataValue_cardio"], 1)
+
+plt.plot(
+    merged["DataValue_binge"],
+    m*merged["DataValue_binge"] + b,
+    color = "black"
+)
+
+corr = merged["DataValue_binge"].corr(merged["DataValue_cardio"])
+plt.text(
+    0.05, 0.95, f"Correlation: {corr:.2f}", 
+    transform=plt.gca().transAxes, 
+    fontsize=12, 
+    verticalalignment='top'
+)
+
+print(merged)
+
+plt.xlabel("Binge Drinking Prevalence")
+plt.ylabel("Cardiovascular Disease Prevalence")
+plt.title("Binge Drinking vs Cardiovascular Disease by Year/State")
+plt.grid(True, alpha=0.3)
+plt.show()
+
+
